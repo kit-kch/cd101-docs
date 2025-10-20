@@ -543,23 +543,66 @@ def slide_10():
     env_gated_plot_wav(t, signal, env, "slide10", "wave3")
 
 def slide_11():
-    magnitudes = apply_lowpass(rect_frequencies, rect_magnitudes, 500)
-    magnitudes2 = apply_lowpass(rect_frequencies2, rect_magnitudes2, 500)
-    # pad=False like before
-    t, signal = generate_multi_signal([(rect_frequencies, magnitudes), (rect_frequencies2, magnitudes2)], pattern, pad=False)
-    t, gate = generate_beat_trigger(bpm=136, pattern=pattern, pad=False)
+    # vier Bars wie angegeben
+    bar1 = ['16:1', '16:1', '16:1', '16:1', '8:1', '16:1', '16:1', '16:1', '16:1', '16:1', '16:1', '8:1', '16:2', '16:2']
+    bar2 = ['16:2', '16:2', '16:2', '16:2', '8:2', '16:3', '16:3', '16:3', '16:3', '16:3', '16:3', '8:3', '16:4', '16:4']
+    bar3 = ['16:1', '16:1', '16:1', '16:1', '8:1', '16:1', '16:1', '16:1', '16:1', '16:1', '16:1', '8:1', '16:2', '16:2']
+    bar4 = ['16:1', '16:1', '16:1', '16:1', '8:1', '16:1', '16:1', '16:1', '16:1', '16:1', '16:1', '8:1', '16:2', '16:2']
+
+    # Pattern aus den 4 Bars zusammensetzen und zweimal wiederholen
+    pattern11 = (bar1 + bar2 + bar3 + bar4)
+
+    # Basistöne: index1 = b3 (246), index2 = e4 (330),
+    # index3 = d4 (~293.66), index4 = a3 (220)
+    bases = [246.0, 330.0, 293.66, 220.0]
+
+    # BPM / Dauer-Berechnung: eine Bar = 4 Viertel -> total_duration = n_bars * 4 * beat_duration
+    bpm = 136
+    beat_duration = 60.0 / bpm
+    # jede der 4 Bars hat 14 Einträge, pattern11 ist 8 Bars (4*2)
+    n_bars = 4
+    total_duration = n_bars * 4 * beat_duration  # Sekunden für alle Bars
+
+    def odd_partials_up_to(base, fmax=20000.0):
+        freqs = []
+        k = 0
+        while True:
+            f = base * (2 * k + 1)
+            if f > fmax:
+                break
+            freqs.append(f)
+            k += 1
+        return np.array(freqs)
+
+    cutoff = 500  # wie vorher verwendet
+
+    signals = []
+    for base in bases:
+        freqs = odd_partials_up_to(base, 20000.0)
+        mags = np.array([1.0 / (2 * k + 1) for k in range(len(freqs))])  # 1/(odd harmonic)
+        mags = apply_lowpass(freqs, mags, cutoff)
+        signals.append((freqs.tolist(), mags.tolist()))
+
+    # Erzeuge Signal und Gate mit korrekter Gesamtdauer
+    t, signal = generate_multi_signal(signals, pattern11, pad=False, duration=total_duration, sampling_rate=44100)
+    t, gate = generate_beat_trigger(bpm=bpm, pattern=pattern11, total_duration=total_duration, sampling_rate=44100, pad=False)
     env = generate_adsr_envelope(gate, 44100, attack_ms=10, decay_ms=20, sustain_pct=70, release_ms=10, peak=1.0)
 
     folder = "out/" + 'slide11' + "/"
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    pad_samples = len(signal) - len(env)
-    env = np.concatenate([np.zeros(pad_samples), env])
+    # envelope auf Signallänge anpassen
+    if len(signal) > len(env):
+        pad_samples = len(signal) - len(env)
+        env = np.concatenate([np.zeros(pad_samples), env])
+    elif len(env) > len(signal):
+        env = env[-len(signal):]
 
     signal = signal * env
-    repeated_signal = np.tile(signal, 4)
-    save_wave_file(folder + "wave1_mod.wav", repeated_signal)
+
+    # ganze Phrase speichern
+    save_wave_file(folder + "wave1_mod.wav", signal)
 
 slide_1()
 slide_2()
