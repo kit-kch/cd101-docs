@@ -407,6 +407,118 @@ def generate_adsr_envelope(gate, sampling_rate=44100, attack_ms=10, decay_ms=50,
 
     return env
 
+def generate_piecewise_amplitude(duration=2.0, sampling_rate=44100):
+    """
+    Erzeugt ein Signal, das in vier gleichen Vierteln die Amplituden
+    [0, 0.25, 0.5, 1] hat. Rückgabe: (t, signal)
+    """
+    total_samples = int(duration * sampling_rate)
+    quarter = total_samples // 4
+
+    # Build quarters
+    q1 = np.zeros(quarter, dtype=np.float32)
+    q2 = np.full(quarter, 0.25, dtype=np.float32)
+    q3 = np.full(quarter, 0.5, dtype=np.float32)
+    q4 = np.full(total_samples - 3 * quarter, 1.0, dtype=np.float32)
+
+    signal = np.concatenate([q1, q2, q3, q4])
+    t = np.linspace(0, duration, len(signal), endpoint=False)
+    return t, signal
+
+
+def delta_sigma_modulate(signal, sampling_rate=44100, mod_freq=8.0):
+    """
+    Einfacher erster-Ordnung 1-bit Delta-Sigma Modulator mit block-basierter Ausgabe.
+
+    Die Modulation läuft auf einer niedrigen Ausgabefrequenz `mod_freq` (Hz),
+    d.h. jedes ausgegebene Bit bleibt für `1/mod_freq` Sekunden konstant.
+
+    Parameters:
+      signal: ndarray der Eingangsamples (erwartet Bereich ~0..1)
+      sampling_rate: Sample-Rate der Eingangsamples
+      mod_freq: gewünschte Bitrate der 1-bit-Ausgabe (Hz)
+
+    Rückgabe: ndarray gleicher Länge wie `signal` mit Werten 0.0 oder 1.0
+    """
+    def _clamp(x):
+        return float(np.clip(x, 0.0, 1.0))
+
+    sig = np.asarray(signal, dtype=np.float32)
+    n = sig.shape[0]
+    # sampling_rate and mod_freq are taken from function args
+
+    # If caller supplied attributes on the array (unlikely), ignore — we expect explicit args.
+
+    # Compute block size (samples per output bit)
+    block_samples = max(1, int(round(sampling_rate / mod_freq)))
+
+    # Number of blocks
+    n_blocks = int(np.ceil(n / block_samples))
+
+    # Compute block-averages as input values for the DSM (keeps same dynamics but enforces bit-hold)
+    block_inputs = np.zeros(n_blocks, dtype=np.float32)
+    for b in range(n_blocks):
+        start = b * block_samples
+        end = min(start + block_samples, n)
+        if end > start:
+            block_inputs[b] = np.mean(sig[start:end])
+        else:
+            block_inputs[b] = 0.0
+
+    out = np.zeros(n, dtype=np.float32)
+    integrator = 0.0
+    # start feedback as 1.0 so the first computed output bit becomes 0
+    y_prev = 1.0
+
+    for b in range(n_blocks):
+        u = _clamp(block_inputs[b])
+        # update integrator with block-average input minus previous feedback
+        integrator += u - y_prev
+        y = 1.0 if integrator >= 0.0 else 0.0
+        # fill the corresponding output samples with this bit
+        start = b * block_samples
+        end = min(start + block_samples, n)
+        out[start:end] = y
+        y_prev = y
+
+    return out
+
+
+def apply_time_lowpass(signal, cutoff_freq, sampling_rate=44100):
+    """
+    Zeitdiskreter Tiefpass 4. Ordnung durch Kaskadierung von vier
+    einfachen RC-Erstordnungs-Filtern (exponentielles Gleiten).
+
+    y[n] = y[n-1] + alpha * (x[n] - y[n-1])
+    alpha = dt / (RC + dt), RC = 1/(2*pi*fc)
+
+    Diese Implementierung behält die Signatur bei, liefert aber einen
+    deutlich steileren Frequenzgang gegenüber einem einzelnen RC-Glätter.
+    """
+    x = np.asarray(signal, dtype=np.float32)
+    if cutoff_freq <= 0:
+        return x.copy()
+
+    dt = 1.0 / sampling_rate
+    rc = 1.0 / (2.0 * np.pi * float(cutoff_freq))
+    alpha = dt / (rc + dt)
+
+    def lp_once(inp):
+        out = np.zeros_like(inp)
+        if inp.size == 0:
+            return out
+        out[0] = inp[0]
+        for i in range(1, inp.size):
+            out[i] = out[i-1] + alpha * (inp[i] - out[i-1])
+        return out
+
+    out = x
+    # cascade four identical first-order sections -> approx. 4th order
+    for _ in range(2):
+        out = lp_once(out)
+
+    return out
+
 def slide_1():
     frequencies = [246]
     magnitudes = [1.0]
@@ -604,6 +716,35 @@ def slide_11():
     # ganze Phrase speichern
     save_wave_file(folder + "wave1_mod.wav", signal)
 
+
+
+def slide_12():
+    """Demo: Erzeuge das piecewise-Signal und ein 1-bit Delta-Sigma-Signal.
+
+    Die Modulationsfrequenz wird auf (4*4)/duration gesetzt (für duration=2s -> 8 Hz).
+    """
+    sampling_rate = 44100
+    duration = 2.0
+
+    # Piecewise amplitude signal (vier Viertel: 0, 0.25, 1, 1)
+    t_pw, sig_pw = generate_piecewise_amplitude(duration=duration, sampling_rate=sampling_rate)
+    
+    # 1-bit Delta-Sigma Modulation applied to the piecewise signal (mod_freq=8 Hz)
+    ds = delta_sigma_modulate(sig_pw, sampling_rate=sampling_rate, mod_freq=16.0)
+
+    # Prepare output folder
+    folder = "out/slide12/"
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+    # Plot piecewise and the 1-bit stream (we keep the sine plot optional)
+    plot_signal(t_pw, sig_pw, folder + "wave1_t.svg", sample_rate=sampling_rate)
+    plot_signal(t_pw, ds, folder + "wave1_ds_t.svg", sample_rate=sampling_rate)
+
+    # Lowpass the 1-bit stream at 4 Hz and save plot (no wav)
+    ds_lp = apply_time_lowpass(ds, cutoff_freq=3.0, sampling_rate=sampling_rate)
+    plot_signal(t_pw, ds_lp, folder + "wave1_lp.svg", sample_rate=sampling_rate)
+
 slide_1()
 slide_2()
 slide_3()
@@ -615,3 +756,4 @@ slide_8()
 slide_9()
 slide_10()
 slide_11()
+slide_12()

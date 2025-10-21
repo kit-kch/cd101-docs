@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2025-10-20T10:54:34.313508</dc:date>
+    <dc:date>2025-10-21T17:25:25.475652</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -44,12 +44,12 @@ z
     <g id="ytick_1">
      <g id="line2d_1">
       <defs>
-       <path id="m84c441c072" d="M 4 0 
+       <path id="m812c3ba951" d="M 4 0 
 L -4 -0 
 " style="stroke: #000000; stroke-width: 2"/>
       </defs>
       <g>
-       <use xlink:href="#m84c441c072" x="26.518361" y="46.407273" style="stroke: #000000; stroke-width: 2"/>
+       <use xlink:href="#m812c3ba951" x="26.518361" y="46.407273" style="stroke: #000000; stroke-width: 2"/>
       </g>
      </g>
      <g id="text_1">
@@ -5023,30 +5023,30 @@ L 340.771523 185.201234
 L 340.832116 177.163317 
 L 340.885581 136.627514 
 L 340.885581 136.627514 
-" clip-path="url(#p968b7686a3)" style="fill: none; stroke: #0000ff; stroke-width: 2; stroke-linecap: square"/>
+" clip-path="url(#pfa9711fb7e)" style="fill: none; stroke: #0000ff; stroke-width: 2; stroke-linecap: square"/>
    </g>
    <g id="line2d_3">
     <defs>
-     <path id="m6b220f87c5" d="M 3 0 
+     <path id="me18c08fcec" d="M 3 0 
 L -3 -3 
 L -3 3 
 z
 " style="stroke: #000000; stroke-linejoin: miter"/>
     </defs>
     <g>
-     <use xlink:href="#m6b220f87c5" x="356.603942" y="125.803636" style="stroke: #000000; stroke-linejoin: miter"/>
+     <use xlink:href="#me18c08fcec" x="356.603942" y="125.803636" style="stroke: #000000; stroke-linejoin: miter"/>
     </g>
    </g>
    <g id="line2d_4">
     <defs>
-     <path id="m4cb8f64efa" d="M 0 -3 
+     <path id="m27c491f83c" d="M 0 -3 
 L -3 3 
 L 3 3 
 z
 " style="stroke: #000000; stroke-linejoin: miter"/>
     </defs>
     <g>
-     <use xlink:href="#m4cb8f64efa" x="26.518361" y="30.528" style="stroke: #000000; stroke-linejoin: miter"/>
+     <use xlink:href="#m27c491f83c" x="26.518361" y="30.528" style="stroke: #000000; stroke-linejoin: miter"/>
     </g>
    </g>
    <g id="patch_3">
@@ -5158,7 +5158,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p968b7686a3">
+  <clipPath id="pfa9711fb7e">
    <rect x="10.8" y="30.528" width="345.803942" height="174.672"/>
   </clipPath>
  </defs>
